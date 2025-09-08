@@ -61,6 +61,9 @@ export default function DeckDetail() {
       />
 
       <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.quizBtn} onPress={() => router.push({ pathname: '/deck/[id]/quiz', params: { id: deck.id } })}>
+          <Text style={styles.startText}>Quiz Mode</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.startBtn} onPress={() => router.push({ pathname: '/deck/[id]/test', params: { id: deck.id } })}>
           <Text style={styles.startText}>Start Test</Text>
         </TouchableOpacity>
@@ -89,6 +92,7 @@ const styles = StyleSheet.create({
   deleteText: { color: '#ff7b7b', fontWeight: '700' },
   deleteDeckTop: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#38222a', borderRadius: 10 },
   bottomBar: { position: 'absolute', left: 16, right: 16, bottom: 16, flexDirection: 'row', gap: 10 },
+  quizBtn: { flex: 1, backgroundColor: '#2a3647', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   startBtn: { flex: 1, backgroundColor: '#4f8cff', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   startText: { color: 'white', fontWeight: '700' }
 });

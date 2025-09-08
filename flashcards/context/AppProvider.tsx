@@ -1,7 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
-const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 export type Flashcard = {
   id: string;
@@ -32,6 +30,7 @@ export type AppState = {
   coins: number;
   testHistory: TestResult[];
   theme: 'light' | 'dark';
+  openaiApiKey?: string;
 };
 
 type Ctx = {
@@ -43,8 +42,7 @@ type Ctx = {
   recordTest: (result: Omit<TestResult, 'id' | 'endedAt'>) => void;
   addCoins: (amount: number) => void;
   toggleTheme: () => void;
-  importDecks: (json: string) => void;
-  exportDecks: () => string;
+  setOpenAIApiKey: (key: string | undefined) => void;
 };
 
 const defaultState: AppState = { decks: [], coins: 0, testHistory: [], theme: 'dark' };
@@ -52,7 +50,17 @@ const AppContext = createContext<Ctx | null>(null);
 
 const STORAGE_KEY = '@flashmaster_state_v1';
 
+function generateId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
+  // TEMP one-time key setter (delete after it persists)
+  useEffect(() => {
+    const KEY = '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';
+    if (KEY && KEY.startsWith('sk-')) setOpenAIApiKey(KEY);
+  }, []);
+
   const [state, setState] = useState<AppState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
 
@@ -105,23 +113,14 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
 
   const toggleTheme = () => setState(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }));
 
-  const importDecks = (json: string) => {
-    try {
-      const parsed = JSON.parse(json) as Deck[];
-      if (!Array.isArray(parsed)) throw new Error('Invalid format');
-      setState(s => ({ ...s, decks: parsed }));
-    } catch (e: any) {
-      Alert.alert('Import failed', e?.message ?? 'Invalid JSON');
-    }
-  };
-
-  const exportDecks = () => JSON.stringify(state.decks, null, 2);
+  const setOpenAIApiKey = (key: string | undefined) => setState(s => ({ ...s, openaiApiKey: key }));
 
   const value = useMemo<Ctx>(() => ({
-    state, addDeck, deleteDeck, addCard, deleteCard, recordTest, addCoins, toggleTheme, importDecks, exportDecks
+    state, addDeck, deleteDeck, addCard, deleteCard, recordTest, addCoins, toggleTheme, setOpenAIApiKey
   }), [state]);
 
   if (!hydrated) return null;
+  
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
