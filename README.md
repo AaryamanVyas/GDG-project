@@ -100,3 +100,15 @@ Deck sharing/import/export
 Leaderboard for coins & streaks
 
 Smarter AI prompt tuning for more accurate MCQs
+![WhatsApp Image 2025-09-08 at 23 09 58_f6f91cbf](https://github.com/user-attachments/assets/1ff8cb7a-0e48-45da-91bb-4a762118369a)
+![WhatsApp Image 2025-09-08 at 23 11 04_9c8996e8](https://github.com/user-attachments/assets/421be608-e0b6-420d-91d5-ff36d62e6fd0)
+![WhatsApp Image 2025-09-08 at 23 11 19_ea227d4e](https://github.com/user-attachments/assets/076500bd-c9ca-4a56-a630-9fd238545d0e)
+![WhatsApp Image 2025-09-08 at 23 11 30_895748f6](https://github.com/user-attachments/assets/1ec43aa3-9823-4b0c-8d34-9c024fef705c)
+![WhatsApp Image 2025-09-08 at 23 11 43_50a8938f](https://github.com/user-attachments/assets/190bc757-85c2-4713-acd0-d5a1ece208d8)
+![WhatsApp Image 2025-09-08 at 23 12 24_b1028bd2](https://github.com/user-attachments/assets/38349f7b-28dd-42fc-9b95-2996cd60021b)
+![WhatsApp Image 2025-09-08 at 23 12 51_13a2a279](https://github.com/user-attachments/assets/cbe79183-e82e-481a-9573-d6e8e53f9969)
+![WhatsApp Image 2025-09-08 at 23 13 16_d419aec2](https://github.com/user-attachments/assets/f6ea4ac1-0647-4d86-aa9b-f4b85e586e3e)
+
+
+
+
