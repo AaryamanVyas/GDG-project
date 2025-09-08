@@ -56,11 +56,6 @@ function generateId() {
 
 export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   // TEMP one-time key setter (delete after it persists)
-  useEffect(() => {
-    const KEY = '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';
-    if (KEY && KEY.startsWith('sk-')) setOpenAIApiKey(KEY);
-  }, []);
-
   const [state, setState] = useState<AppState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
 
