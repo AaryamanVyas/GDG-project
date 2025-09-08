@@ -41,23 +41,6 @@ OpenRouter API
 
 Context API for global state management
 
-📂 Project Structure
-flashmaster/
-│
-├── app/
-│   ├── index.tsx           # Home / My Decks screen
-│   ├── progress.tsx        # Progress tracking screen
-│   ├── deck/[id]/          # Deck details & quiz routes
-│   │   └── quiz.tsx        # QuizScreen (AI + fallback)
-│   └── _layout.tsx         # Expo Router layout
-│
-├── context/
-│   └── AppProvider.tsx     # Global state (decks, coins, theme, records)
-│
-├── assets/                 # Images, icons, etc.
-│
-├── README.md               # Project documentation
-└── package.json
 
 ⚡ Getting Started
 1️⃣ Clone & Install
