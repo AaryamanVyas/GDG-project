@@ -1,9 +1,18 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useApp } from '../../../context/AppProvider';
 
 type MCQ = { question: string; choices: string[]; correctIndex: number };
+
+type AnswerItem = {
+  question: string;
+  choices: string[];
+  correctIndex: number;
+  chosenIndex: number;
+  isCorrect: boolean;
+};
 
 function tryParseArray(text: string): MCQ[] {
   // Try code fences first
@@ -103,7 +112,7 @@ function fallbackQuiz(cards: { question: string; answer: string }[]): MCQ[] {
 
 export default function QuizScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, recordTest } = useApp();
+  const { state, recordTest, addCoins } = useApp();
   const router = useRouter();
 
   const deck = useMemo(() => state.decks.find(d => d.id === id), [state.decks, id]);
@@ -111,6 +120,10 @@ export default function QuizScreen() {
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(0);
   const [score, setScore] = useState(0);
+  const [answers, setAnswers] = useState<AnswerItem[]>([]);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -139,33 +152,100 @@ export default function QuizScreen() {
 
   const question = mcqs[current];
 
-  const choose = (idx: number) => {
-    const nextScore = score + (idx === question.correctIndex ? 1 : 0);
+  const persistAttempt = async (finalScore: number, finalAnswers: AnswerItem[]) => {
+    const attempt = {
+      type: 'quiz',
+      deckId: deck.id,
+      deckName: deck.name,
+      total: mcqs.length,
+      score: finalScore,
+      endedAt: Date.now(),
+      items: finalAnswers,
+    };
+    try {
+      const key = `@flashmaster_quiz_${deck.id}_${attempt.endedAt}`;
+      await AsyncStorage.setItem(key, JSON.stringify(attempt));
+    } catch {}
+  };
+
+  const proceed = async (nextScore: number, nextAnswers: AnswerItem[]) => {
     if (current + 1 >= mcqs.length) {
       const pct = Math.round((nextScore / mcqs.length) * 100);
-      recordTest({ deckId: deck.id, score: pct, total: mcqs.length, bestStreak: nextScore, correct: nextScore, wrong: mcqs.length - nextScore });
+      setAnswers(nextAnswers);
+      await persistAttempt(pct, nextAnswers);
+      recordTest({ deckId: deck.id, score: pct, total: mcqs.length, bestStreak, correct: nextScore, wrong: mcqs.length - nextScore });
       router.replace({ pathname: '/deck/[id]', params: { id: deck.id } });
       return;
     }
     setScore(nextScore);
+    setAnswers(nextAnswers);
     setCurrent(current + 1);
+    setSelectedIdx(null);
+  };
+
+  const choose = (idx: number) => {
+    if (selectedIdx !== null) return; // already chosen
+    setSelectedIdx(idx);
+
+    const isCorrect = idx === question.correctIndex;
+    let nextScore = score;
+    if (isCorrect) {
+      nextScore = score + 1;
+      setStreak(s => {
+        const ns = s + 1;
+        setBestStreak(b => Math.max(b, ns));
+        addCoins(1 + (ns > 1 ? 1 : 0));
+        return ns;
+      });
+    } else {
+      setStreak(0);
+    }
+
+    const nextAnswers = [
+      ...answers,
+      {
+        question: question.question,
+        choices: question.choices,
+        correctIndex: question.correctIndex,
+        chosenIndex: idx,
+        isCorrect,
+      },
+    ];
+
+    // Show feedback colors briefly, then proceed
+    setTimeout(() => { proceed(nextScore, nextAnswers); }, 700);
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>{deck.name} • Quiz</Text>
-      <Text style={styles.meta}>Question {current + 1} / {mcqs.length}</Text>
+      <Text style={styles.meta}>Question {current + 1} / {mcqs.length} • Correct so far: {score}</Text>
 
       <View style={styles.card}>
         <Text style={styles.qText}>{question.question}</Text>
       </View>
 
       <View style={{ gap: 10, marginTop: 12 }}>
-        {question.choices.map((c, i) => (
-          <TouchableOpacity key={i} style={styles.choice} onPress={() => choose(i)}>
-            <Text style={styles.choiceText}>{c}</Text>
-          </TouchableOpacity>
-        ))}
+        {question.choices.map((c, i) => {
+          const isChosen = selectedIdx === i;
+          const isCorrectChoice = selectedIdx !== null && i === question.correctIndex;
+          const isWrongChosen = selectedIdx !== null && isChosen && i !== question.correctIndex;
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[
+                styles.choice,
+                isCorrectChoice && styles.choiceCorrect,
+                isWrongChosen && styles.choiceWrong,
+              ]}
+              activeOpacity={0.8}
+              onPress={() => choose(i)}
+              disabled={selectedIdx !== null}
+            >
+              <Text style={styles.choiceText}>{c}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -178,6 +258,8 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#121922', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#223244' },
   qText: { color: 'white', fontSize: 18 },
   choice: { backgroundColor: '#1a2430', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 12, borderWidth: 1, borderColor: '#243345' },
+  choiceCorrect: { backgroundColor: '#1e3a2f', borderColor: '#227a52' },
+  choiceWrong: { backgroundColor: '#38222a', borderColor: '#7a2222' },
   choiceText: { color: 'white', fontWeight: '600' }
 });
 
