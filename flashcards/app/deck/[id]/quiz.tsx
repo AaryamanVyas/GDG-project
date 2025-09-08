@@ -14,35 +14,37 @@ type AnswerItem = {
   isCorrect: boolean;
 };
 
+// --- Utility Functions ---
 function tryParseArray(text: string): MCQ[] {
-  // Try code fences first
   const fenced = text.match(/```[\s\S]*?```/);
   if (fenced) {
     const inner = fenced[0].replace(/^```[a-zA-Z]*\n?/, '').replace(/```$/, '');
     try {
       const val = JSON.parse(inner);
-      if (Array.isArray(val)) return val as MCQ[];
-      if (val && typeof val === 'object' && Array.isArray((val as any).mcqs)) return (val as any).mcqs as MCQ[];
+      if (Array.isArray(val)) return val;
+      if (val?.mcqs && Array.isArray(val.mcqs)) return val.mcqs;
     } catch {}
   }
-  // Try extracting array slice
+
   const start = text.indexOf('[');
   const end = text.lastIndexOf(']');
-  if (start !== -1 && end !== -1 && end > start) {
-    const slice = text.slice(start, end + 1);
-    try { const arr = JSON.parse(slice); if (Array.isArray(arr)) return arr; } catch {}
+  if (start !== -1 && end > start) {
+    try {
+      const arr = JSON.parse(text.slice(start, end + 1));
+      if (Array.isArray(arr)) return arr;
+    } catch {}
   }
-  // Try direct parse as array or object with mcqs
+
   try {
     const val = JSON.parse(text);
-    if (Array.isArray(val)) return val as MCQ[];
-    if (val && typeof val === 'object' && Array.isArray((val as any).mcqs)) return (val as any).mcqs as MCQ[];
+    if (Array.isArray(val)) return val;
+    if (val?.mcqs && Array.isArray(val.mcqs)) return val.mcqs;
   } catch {}
   return [];
 }
 
 async function callOpenRouter(apiKey: string, model: string, prompt: string) {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  return fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -52,14 +54,13 @@ async function callOpenRouter(apiKey: string, model: string, prompt: string) {
       model,
       messages: [
         { role: 'system', content: 'Reply with ONLY JSON. Either a JSON array of MCQs, or {"mcqs": [...]}.' },
-        { role: 'user', content: prompt }
+        { role: 'user', content: prompt },
       ],
       temperature: 0.2,
       max_tokens: 800,
-      response_format: { type: 'json_object' }
-    })
+      response_format: { type: 'json_object' },
+    }),
   });
-  return res;
 }
 
 async function generateQuizFromOpenRouter(apiKey: string, deckName: string, cards: { question: string; answer: string }[]): Promise<MCQ[]> {
@@ -68,7 +69,7 @@ async function generateQuizFromOpenRouter(apiKey: string, deckName: string, card
     '{ "question": string, "choices": string[4], "correctIndex": 0|1|2|3 }',
     `Deck: "${deckName}"`,
     'Cards:',
-    ...cards.map(c => `- Q: ${c.question} | A: ${c.answer}`)
+    ...cards.map(c => `- Q: ${c.question} | A: ${c.answer}`),
   ].join('\n');
 
   const models = [
@@ -80,14 +81,15 @@ async function generateQuizFromOpenRouter(apiKey: string, deckName: string, card
 
   let lastRaw = '';
   let lastErr: string | null = null;
+
   for (const model of models) {
     try {
       const res = await callOpenRouter(apiKey, model, prompt);
       if (!res.ok) {
-        const errText = await res.text();
-        lastErr = `OpenRouter error ${res.status}: ${errText.slice(0, 200)}`;
+        lastErr = `OpenRouter error ${res.status}: ${(await res.text()).slice(0, 200)}`;
         continue;
       }
+
       const data = await res.json();
       const text = data.choices?.[0]?.message?.content ?? '';
       lastRaw = text;
@@ -98,6 +100,7 @@ async function generateQuizFromOpenRouter(apiKey: string, deckName: string, card
       lastErr = e?.message ?? 'Unknown error';
     }
   }
+
   if (lastErr) throw new Error(`${lastErr}. Raw: ${lastRaw.slice(0, 200)}`);
   return [];
 }
@@ -106,10 +109,11 @@ function fallbackQuiz(cards: { question: string; answer: string }[]): MCQ[] {
   return cards.slice(0, 5).map(c => ({
     question: c.question,
     choices: [c.answer, 'Not sure', 'Another option', 'None of the above'],
-    correctIndex: 0
+    correctIndex: 0,
   }));
 }
 
+// --- Main Screen ---
 export default function QuizScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { state, recordTest, addCoins } = useApp();
@@ -129,19 +133,17 @@ export default function QuizScreen() {
     (async () => {
       if (!deck) return;
       let qs: MCQ[] = [];
+
       if (state.openaiApiKey) {
         try {
-          const out = await generateQuizFromOpenRouter(state.openaiApiKey, deck.name, deck.cards);
-          if (out && out.length > 0) {
-            qs = out;
-          } else {
-            Alert.alert('AI returned no questions', 'Using fallback MCQs instead.');
-          }
+          qs = await generateQuizFromOpenRouter(state.openaiApiKey, deck.name, deck.cards);
+          if (!qs.length) Alert.alert('AI returned no questions', 'Using fallback MCQs instead.');
         } catch (e: any) {
           Alert.alert('AI error', (e?.message ?? 'Unknown error').slice(0, 300));
         }
       }
-      if (!qs || qs.length === 0) qs = fallbackQuiz(deck.cards);
+
+      if (!qs.length) qs = fallbackQuiz(deck.cards);
       setMcqs(qs);
       setLoading(false);
     })();
@@ -163,8 +165,7 @@ export default function QuizScreen() {
       items: finalAnswers,
     };
     try {
-      const key = `@flashmaster_quiz_${deck.id}_${attempt.endedAt}`;
-      await AsyncStorage.setItem(key, JSON.stringify(attempt));
+      await AsyncStorage.setItem(`@flashmaster_quiz_${deck.id}_${attempt.endedAt}`, JSON.stringify(attempt));
     } catch {}
   };
 
@@ -184,35 +185,24 @@ export default function QuizScreen() {
   };
 
   const choose = (idx: number) => {
-    if (selectedIdx !== null) return; // already chosen
+    if (selectedIdx !== null) return;
     setSelectedIdx(idx);
 
     const isCorrect = idx === question.correctIndex;
-    let nextScore = score;
-    if (isCorrect) {
-      nextScore = score + 1;
-      setStreak(s => {
-        const ns = s + 1;
-        setBestStreak(b => Math.max(b, ns));
-        addCoins(1 + (ns > 1 ? 1 : 0));
-        return ns;
-      });
-    } else {
-      setStreak(0);
-    }
+    const nextScore = isCorrect ? score + 1 : score;
+    const nextStreak = isCorrect ? streak + 1 : 0;
+    const nextBestStreak = Math.max(bestStreak, nextStreak);
+
+    if (isCorrect) addCoins(1 + (nextStreak > 1 ? 1 : 0));
+
+    setStreak(nextStreak);
+    setBestStreak(nextBestStreak);
 
     const nextAnswers = [
       ...answers,
-      {
-        question: question.question,
-        choices: question.choices,
-        correctIndex: question.correctIndex,
-        chosenIndex: idx,
-        isCorrect,
-      },
+      { question: question.question, choices: question.choices, correctIndex: question.correctIndex, chosenIndex: idx, isCorrect },
     ];
 
-    // Show feedback colors briefly, then proceed
     setTimeout(() => { proceed(nextScore, nextAnswers); }, 700);
   };
 
@@ -230,14 +220,11 @@ export default function QuizScreen() {
           const isChosen = selectedIdx === i;
           const isCorrectChoice = selectedIdx !== null && i === question.correctIndex;
           const isWrongChosen = selectedIdx !== null && isChosen && i !== question.correctIndex;
+
           return (
             <TouchableOpacity
               key={i}
-              style={[
-                styles.choice,
-                isCorrectChoice && styles.choiceCorrect,
-                isWrongChosen && styles.choiceWrong,
-              ]}
+              style={[styles.choice, isCorrectChoice && styles.choiceCorrect, isWrongChosen && styles.choiceWrong]}
               activeOpacity={0.8}
               onPress={() => choose(i)}
               disabled={selectedIdx !== null}
@@ -260,6 +247,5 @@ const styles = StyleSheet.create({
   choice: { backgroundColor: '#1a2430', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 12, borderWidth: 1, borderColor: '#243345' },
   choiceCorrect: { backgroundColor: '#1e3a2f', borderColor: '#227a52' },
   choiceWrong: { backgroundColor: '#38222a', borderColor: '#7a2222' },
-  choiceText: { color: 'white', fontWeight: '600' }
+  choiceText: { color: 'white', fontWeight: '600' },
 });
-

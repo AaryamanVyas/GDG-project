@@ -11,17 +11,30 @@ export default function DeckDetail() {
   const router = useRouter();
 
   const deck = useMemo(() => state.decks.find((d) => d.id === id), [state.decks, id]);
-  if (!deck) return <View style={styles.container}><Text style={styles.header}>Deck not found</Text></View>;
+  if (!deck) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.header}>Deck not found</Text>
+      </View>
+    );
+  }
+
+  const goHome = () => router.replace('/');
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>{deck.name}</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => router.replace('/')} style={styles.homeBtn}>
+          <TouchableOpacity onPress={goHome} style={styles.homeBtn}>
             <Text style={styles.btnText}>Home</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteDeckTop} onPress={() => { deleteDeck(deck.id); router.replace('/'); }}>
+          <TouchableOpacity
+            style={styles.deleteDeckTop}
+            onPress={() => {
+              deleteDeck(deck.id);
+              goHome();
+            }}>
             <Text style={styles.deleteText}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -29,14 +42,27 @@ export default function DeckDetail() {
       <Text style={styles.meta}>{deck.cards.length} cards</Text>
 
       <View style={styles.form}>
-        <TextInput placeholder="Question" placeholderTextColor="#7a8aa0" value={q} onChangeText={setQ} style={styles.input} />
-        <TextInput placeholder="Answer" placeholderTextColor="#7a8aa0" value={a} onChangeText={setA} style={styles.input} />
+        <TextInput
+          placeholder="Question"
+          placeholderTextColor="#7a8aa0"
+          value={q}
+          onChangeText={setQ}
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Answer"
+          placeholderTextColor="#7a8aa0"
+          value={a}
+          onChangeText={setA}
+          style={styles.input}
+        />
         <TouchableOpacity
           style={styles.primary}
           onPress={() => {
             if (!q.trim() || !a.trim()) return;
             addCard(deck.id, q.trim(), a.trim());
-            setQ(''); setA('');
+            setQ('');
+            setA('');
           }}>
           <Text style={styles.btnText}>Add Card</Text>
         </TouchableOpacity>
@@ -51,7 +77,9 @@ export default function DeckDetail() {
               <Text style={styles.q}>{item.question}</Text>
               <Text style={styles.a}>{item.answer}</Text>
             </View>
-            <TouchableOpacity onPress={() => deleteCard(deck.id, item.id)} style={styles.deleteBtn}>
+            <TouchableOpacity
+              onPress={() => deleteCard(deck.id, item.id)}
+              style={styles.deleteBtn}>
               <Text style={styles.deleteText}>Delete</Text>
             </TouchableOpacity>
           </View>
@@ -61,10 +89,14 @@ export default function DeckDetail() {
       />
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.quizBtn} onPress={() => router.push({ pathname: '/deck/[id]/quiz', params: { id: deck.id } })}>
+        <TouchableOpacity
+          style={styles.quizBtn}
+          onPress={() => router.push({ pathname: '/deck/[id]/quiz', params: { id: deck.id } })}>
           <Text style={styles.startText}>Quiz Mode</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.startBtn} onPress={() => router.push({ pathname: '/deck/[id]/test', params: { id: deck.id } })}>
+        <TouchableOpacity
+          style={styles.startBtn}
+          onPress={() => router.push({ pathname: '/deck/[id]/test', params: { id: deck.id } })}>
           <Text style={styles.startText}>Start Test</Text>
         </TouchableOpacity>
       </View>

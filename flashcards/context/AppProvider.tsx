@@ -1,51 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { AppState, Ctx, TestResult } from './types';
 
-export type Flashcard = {
-  id: string;
-  question: string;
-  answer: string;
-};
-
-export type Deck = {
-  id: string;
-  name: string;
-  cards: Flashcard[];
-  createdAt: number;
-};
-
-export type TestResult = {
-  id: string;
-  deckId: string;
-  score: number;
-  total: number;
-  bestStreak: number;
-  correct: number;
-  wrong: number;
-  endedAt: number;
-};
-
-export type AppState = {
-  decks: Deck[];
-  coins: number;
-  testHistory: TestResult[];
-  theme: 'light' | 'dark';
-  openaiApiKey?: string;
-};
-
-type Ctx = {
-  state: AppState;
-  addDeck: (name: string) => void;
-  deleteDeck: (id: string) => void;
-  addCard: (deckId: string, question: string, answer: string) => void;
-  deleteCard: (deckId: string, cardId: string) => void;
-  recordTest: (result: Omit<TestResult, 'id' | 'endedAt'>) => void;
-  addCoins: (amount: number) => void;
-  toggleTheme: () => void;
-  setOpenAIApiKey: (key: string | undefined) => void;
-};
-
-const defaultState: AppState = { decks: [], coins: 0, testHistory: [], theme: 'dark' };
+const defaultState: AppState = { decks: [], coins: 0, testHistory: [] };
 const AppContext = createContext<Ctx | null>(null);
 
 const STORAGE_KEY = '@flashmaster_state_v1';
@@ -55,8 +12,6 @@ function generateId() {
 }
 
 export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-
-
   const [state, setState] = useState<AppState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
 
@@ -73,12 +28,20 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
 
   useEffect(() => {
     if (!hydrated) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(err =>
+      console.error('Failed to save state:', err)
+    );
   }, [state, hydrated]);
 
   const addDeck = (name: string) => {
     if (!name.trim()) return;
-    setState(s => ({ ...s, decks: [{ id: generateId(), name: name.trim(), cards: [], createdAt: Date.now() }, ...s.decks] }));
+    setState(s => ({
+      ...s,
+      decks: [
+        { id: generateId(), name: name.trim(), cards: [], createdAt: Date.now() },
+        ...s.decks,
+      ],
+    }));
   };
 
   const deleteDeck = (id: string) => {
@@ -89,14 +52,26 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     if (!question.trim() || !answer.trim()) return;
     setState(s => ({
       ...s,
-      decks: s.decks.map(d => d.id === deckId ? { ...d, cards: [{ id: generateId(), question: question.trim(), answer: answer.trim() }, ...d.cards] } : d)
+      decks: s.decks.map(d =>
+        d.id === deckId
+          ? {
+              ...d,
+              cards: [
+                { id: generateId(), question: question.trim(), answer: answer.trim() },
+                ...d.cards,
+              ],
+            }
+          : d
+      ),
     }));
   };
 
   const deleteCard = (deckId: string, cardId: string) => {
     setState(s => ({
       ...s,
-      decks: s.decks.map(d => d.id === deckId ? { ...d, cards: d.cards.filter(c => c.id !== cardId) } : d)
+      decks: s.decks.map(d =>
+        d.id === deckId ? { ...d, cards: d.cards.filter(c => c.id !== cardId) } : d
+      ),
     }));
   };
 
@@ -105,19 +80,30 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     setState(s => ({ ...s, testHistory: [entry, ...s.testHistory] }));
   };
 
-  const addCoins = (amount: number) => setState(s => ({ ...s, coins: Math.max(0, s.coins + amount) }));
+  const addCoins = (amount: number) =>
+    setState(s => ({ ...s, coins: Math.max(0, s.coins + amount) }));
 
-  const toggleTheme = () => setState(s => ({ ...s, theme: s.theme === 'dark' ? 'light' : 'dark' }));
+  const setOpenAIApiKey = (key: string | undefined) =>
+    setState(s => ({ ...s, openaiApiKey: key }));
 
-  const setOpenAIApiKey = (key: string | undefined) => setState(s => ({ ...s, openaiApiKey: key }));
+  if (!hydrated) return null; // Or show splash/loading
 
-  const value = useMemo<Ctx>(() => ({
-    state, addDeck, deleteDeck, addCard, deleteCard, recordTest, addCoins, toggleTheme, setOpenAIApiKey
-  }), [state]);
-
-  if (!hydrated) return null;
-  
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider
+      value={{
+        state,
+        addDeck,
+        deleteDeck,
+        addCard,
+        deleteCard,
+        recordTest,
+        addCoins,
+        setOpenAIApiKey,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
 };
 
 export const useApp = () => {

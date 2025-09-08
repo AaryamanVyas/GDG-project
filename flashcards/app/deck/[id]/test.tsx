@@ -62,27 +62,30 @@ export default function TestScreen() {
   const handleAnswer = (isCorrect: boolean) => {
     if (answered) return;
     setAnswered(true);
-
+  
     let nextCorrect = correct;
     let nextWrong = wrong;
-
+    let nextStreak = streak;
+    let nextBest = bestStreak;
+  
     if (isCorrect) {
-      nextCorrect = correct + 1;
-      setCorrect(nextCorrect);
-      setStreak(s => {
-        const ns = s + 1;
-        setBestStreak(b => Math.max(b, ns));
-        addCoins(1 + (ns > 1 ? 1 : 0));
-        return ns;
-      });
+      nextCorrect += 1;
+      nextStreak += 1;
+      nextBest = Math.max(nextBest, nextStreak);
+      addCoins(1 + (nextStreak > 1 ? 1 : 0));
     } else {
-      nextWrong = wrong + 1;
-      setWrong(nextWrong);
-      setStreak(0);
+      nextWrong += 1;
+      nextStreak = 0;
     }
-
+  
+    setCorrect(nextCorrect);
+    setWrong(nextWrong);
+    setStreak(nextStreak);
+    setBestStreak(nextBest);
+  
     setTimeout(() => advance(nextCorrect, nextWrong), 220);
   };
+  
 
   const panResponder = useRef(PanResponder.create({
     onMoveShouldSetPanResponder: (_, g) => isBackVisibleRef.current && Math.abs(g.dx) > 10,
