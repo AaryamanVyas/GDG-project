@@ -55,7 +55,8 @@ function generateId() {
 }
 
 export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-  // TEMP one-time key setter (delete after it persists)
+
+
   const [state, setState] = useState<AppState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
 
